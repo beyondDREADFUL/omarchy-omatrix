@@ -6,8 +6,9 @@ The dial design comes from **Omatrix** in [dkgamer02ai/omarchy-wallpaper-engine]
 
 ## What it does
 
-- **Themes mode** shows every installed theme, using the previews the stock theme switcher caches in `~/.cache/omarchy/theme-selector/previews`. Choosing one runs `omarchy-theme-set`.
-- **Backgrounds mode** shows the current theme's backgrounds, plus any you keep in `~/.config/omarchy/backgrounds/<theme>/`. Choosing one runs `omarchy-theme-bg-set`.
+- **Themes mode** builds its list on every open from your theme folders (`~/.config/omarchy/themes/`) and Omarchy's stock themes. Each theme shows its `preview.*` image, or else its first background; themes with neither are hidden. Names are readable (`catppuccin-dark` → Catppuccin Dark), and the dial opens on the current theme. Choosing one runs `omarchy-theme-set`.
+- **Backgrounds mode** shows the current theme's backgrounds, plus any you keep in `~/.config/omarchy/backgrounds/<theme>/`. Names are readable (`1-eyes-wide` → Eyes Wide), and the dial opens on the current background. Choosing one runs `omarchy-theme-bg-set`.
+- `bin/omatrix-list themes|backgrounds` prints the cards the dial shows, one per line. It is handy for debugging: `bin/omatrix-list themes`.
 
 | Action | Control |
 |---|---|
@@ -60,7 +61,6 @@ omarchy plugin remove io.github.beyonddreadful.omatrix
 
 ## Notes
 
-- Themes mode lists the theme switcher's preview cache. If you add a theme, open the stock switcher once (or run `omatrix-pickers off`, pick a theme, then `on` again) so the cache picks it up.
 - Applying a theme restarts the shell, which closes the dial. This is expected.
 - If you edit the QML while the shell is running, restart the shell (`omarchy-restart-shell`) to load the change. Hot reload doesn't always pick it up.
 

@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# Print the Omatrix dial cards, one per line: <image path>\t<name>\t<current 1|0>.
+#   omatrix-list themes       Installed themes (user folders, then Omarchy's stock themes)
+#   omatrix-list backgrounds  Current theme's backgrounds
+set -euo pipefail
+
+STATE="$HOME/.local/state/omarchy/current"
+USER_THEMES="$HOME/.config/omarchy/themes"
+STOCK_THEMES="${OMARCHY_PATH:-/usr/share/omarchy}/themes"
+
+# First preview in a theme folder: preview.* first, else the first background.
+find_preview() {
+  local dir="$1" n p
+  for n in preview.png preview.jpg preview.jpeg preview.webp preview.gif preview.bmp; do
+    p="$(find -L "$dir" -maxdepth 1 -type f -iname "$n" -print -quit 2>/dev/null || true)"
+    if [[ -n "$p" ]]; then
+      printf '%s\n' "$p"
+      return
+    fi
+  done
+  find -L "$dir/backgrounds" -maxdepth 1 -type f \
+    \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.webp' \) \
+    2>/dev/null | sort | head -n 1 || true
+}
+
+themes() {
+  local cur name dir src p c
+  cur="$(cat "$STATE/theme.name" 2>/dev/null || true)"
+
+  { find "$USER_THEMES" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -printf '%f\n' 2>/dev/null || true
+    find "$STOCK_THEMES" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null || true
+  } | sort -u | while IFS= read -r name; do
+    src=""
+    for dir in "$USER_THEMES/$name" "$STOCK_THEMES/$name"; do
+      [[ -d "$dir" ]] || continue
+      p="$(find_preview "$dir")"
+      if [[ -n "$p" ]]; then
+        src="$p"
+        break
+      fi
+    done
+    # Themes with no image anywhere are skipped.
+    [[ -n "$src" ]] || continue
+    if [[ "$name" == "$cur" ]]; then c=1; else c=0; fi
+    printf '%s\t%s\t%s\n' "$src" "$name" "$c"
+  done
+}
+
+backgrounds() {
+  local theme cur_bg dir p name real c
+  local dirs=("$STATE/theme/backgrounds")
+  theme="$(cat "$STATE/theme.name" 2>/dev/null || true)"
+  if [[ -n "$theme" ]]; then
+    dirs+=("$HOME/.config/omarchy/backgrounds/$theme")
+  fi
+  cur_bg="$(readlink -f "$STATE/background" 2>/dev/null || true)"
+
+  for dir in "${dirs[@]}"; do
+    find -L "$dir" -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+      2>/dev/null || true
+  done | sort | while IFS= read -r p; do
+    name="${p##*/}"
+    name="${name%.*}"
+    real="$(readlink -f "$p" 2>/dev/null || true)"
+    if [[ -n "$real" && "$real" == "$cur_bg" ]]; then c=1; else c=0; fi
+    printf '%s\t%s\t%s\n' "$p" "$name" "$c"
+  done
+}
+
+case "${1:-}" in
+  themes) themes ;;
+  backgrounds) backgrounds ;;
+  *)
+    echo "Usage: omatrix-list themes|backgrounds" >&2
+    exit 1
+    ;;
+esac

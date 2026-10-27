@@ -1,9 +1,9 @@
 // Omatrix — a dial picker for Omarchy themes and backgrounds. One overlay, two
-// modes chosen by the summon payload: {"mode":"themes"} (default) lists the
-// theme switcher's cached previews (~/.cache/omarchy/theme-selector/previews)
-// and applies with `omarchy-theme-set`; {"mode":"backgrounds"} lists the current
-// theme's backgrounds plus ~/.config/omarchy/backgrounds/<theme>/ and applies
-// with `omarchy-theme-bg-set`. Type to filter, Enter applies, Esc / right-click
+// modes chosen by the summon payload: {"mode":"themes"} (default) lists every
+// installed theme and applies with `omarchy-theme-set`; {"mode":"backgrounds"}
+// lists the current theme's backgrounds plus ~/.config/omarchy/backgrounds/<theme>/
+// and applies with `omarchy-theme-bg-set`. bin/omatrix-list builds both lists.
+// Opens on the current item. Type to filter, Enter applies, Esc / right-click
 // closes.
 // Dial design adapted from Omatrix in github.com/dkgamer02ai/omarchy-wallpaper-engine (MIT).
 import Quickshell
@@ -24,6 +24,7 @@ Item {
   property var items: []
   readonly property int count: items.length
   property string query: ""
+  readonly property string pluginDir: Qt.resolvedUrl(".").toString().replace(/^file:\/\//, "").replace(/\/$/, "")
 
   // `target` is the integer index being spun to; `pos` eases toward it.
   property real target: 0
@@ -59,12 +60,22 @@ Item {
   }
   function toggle() { if (root.opened) dismiss(); else open("{}") }
 
-  // Keeps the themes whose name contains the typed query (case-insensitive).
+  // Readable card label from the folder or file name, for the current mode.
+  function labelFor(name) {
+    var s = root.mode === "backgrounds"
+      ? name.replace(/^\d+-/, "").replace(/[-_]/g, " ")
+      : name.replace(/-/g, " ")
+    return s.split(" ").filter(function (w) { return w.length > 0 })
+      .map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1) }).join(" ")
+  }
+
+  // Keeps the cards whose folder name or readable label contains the typed query (case-insensitive).
   function applyFilter() {
     var q = root.query.toLowerCase()
     root.items = root.allItems.filter(function (it) {
       var n = it.name.toLowerCase()
       return n.indexOf(q) !== -1 || n.replace(/-/g, " ").indexOf(q) !== -1
+        || it.title.toLowerCase().indexOf(q) !== -1
     })
     root.target = 0
   }
@@ -92,27 +103,22 @@ Item {
     root.dismiss()
   }
 
-  // Lists the cards for the current mode, one absolute path per line: theme
-  // previews in themes mode, the current theme's backgrounds in backgrounds mode.
+  // Runs bin/omatrix-list for the current mode. It prints one card per line:
+  // path, name, current (1 or 0).
   Process {
     id: loader
-    command: root.mode === "backgrounds"
-      ? ["bash", "-c",
-        'theme="$(cat "$HOME/.local/state/omarchy/current/theme.name" 2>/dev/null)"; ' +
-        'find -L "$HOME/.local/state/omarchy/current/theme/backgrounds" ' +
-        '"$HOME/.config/omarchy/backgrounds/$theme" -maxdepth 1 -type f ' +
-        "\\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \\) " +
-        '2>/dev/null | sort']
-      : ["bash", "-c",
-        'find -L "$HOME/.cache/omarchy/theme-selector/previews" -maxdepth 1 -type f | sort']
+    command: [root.pluginDir + "/bin/omatrix-list", root.mode]
     stdout: StdioCollector {
       onStreamFinished: {
         var lines = text.split("\n").filter(function (l) { return l.length > 0 })
-        root.allItems = lines.map(function (p) {
-          var name = p.split("/").pop().replace(/\.[^.]+$/, "")
-          return { path: p, name: name, title: name }
+        root.allItems = lines.map(function (l) {
+          var f = l.split("\t")
+          return { path: f[0], name: f[1], title: root.labelFor(f[1]), current: f[2] === "1" }
         })
         root.applyFilter()
+        // Open the dial on the current theme or background.
+        var cur = root.items.findIndex(function (it) { return it.current === true })
+        if (cur >= 0) root.target = cur
       }
     }
   }

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.beyonddreadful.omatrix",
   "name": "Omatrix",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "beyondDREADFUL",
   "license": "MIT",
   "description": "A dial picker for Omarchy themes and backgrounds, with type-to-filter. Run bin/omatrix-pickers on to use it for menu > Style > Theme and Background.",
