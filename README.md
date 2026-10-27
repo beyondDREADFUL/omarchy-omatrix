@@ -2,7 +2,7 @@
 
 A dial picker for [Omarchy](https://omarchy.org/) **themes** and **backgrounds**, with type-to-filter. It can replace the stock pickers behind **menu → Style → Theme** and **menu → Style → Background**, and you can switch back with one command.
 
-![Omatrix theme dial](preview.png)
+![Omatrix in themes mode and backgrounds mode](preview.png)
 
 The dial design comes from **Omatrix** in [dkgamer02ai/omarchy-wallpaper-engine](https://github.com/dkgamer02ai/omarchy-wallpaper-engine) (MIT). That project uses the dial to pick live Wallpaper Engine wallpapers. This plugin keeps the dial and drops the live-wallpaper parts: no `linux-wallpaperengine`, no Steam, no autostart or hooks. It only uses Omarchy's own themes and static backgrounds.
 
