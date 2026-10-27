@@ -201,7 +201,9 @@ Item {
           rotation: -(90 - rel * root.stepDeg) * 0.5
           scale: Math.max(0.55, 1.18 - Math.abs(rel) * 0.16)
           z: Math.round(200 - Math.abs(rel) * 10)
-          opacity: Math.abs(rel) > 4.2 ? 0 : 1
+          // Fade out between 3 and 4 steps from the apex, so the lowest cards on
+          // the arc never cover the hint line at the bottom.
+          opacity: Math.max(0, Math.min(1, 4 - Math.abs(rel)))
           visible: opacity > 0
 
           Rectangle {
