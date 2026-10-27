@@ -10,6 +10,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Window
 
 Item {
   id: root
@@ -157,6 +158,9 @@ Item {
         source: root.selectedItem() ? "file://" + root.selectedItem().path : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
+        // Decode at the on-screen size instead of the original resolution.
+        sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+        sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
       }
       Rectangle {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
