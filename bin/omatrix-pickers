@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Switch Omarchy's Theme and Background menu rows between the stock pickers and
+# the Omatrix dial pickers. Only the user menu override file is edited; the
+# stock files under /usr/share/omarchy stay untouched.
+#
+#   omatrix-pickers on      Use the Omatrix dial for Style > Theme and Style > Background
+#   omatrix-pickers off     Restore the stock pickers
+#   omatrix-pickers status  Show which pickers the menu uses
+set -euo pipefail
+
+MENU_EXT="$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
+BACKUP="$MENU_EXT.before-omatrix-pickers"
+START="// omatrix-pickers-start"
+END="// omatrix-pickers-end"
+
+remove_block() {
+  [[ -f "$MENU_EXT" ]] || return 0
+  # awk, not sed: the markers contain "/", which would end a sed address.
+  awk -v s="$START" -v e="$END" '
+    index($0, s) { skip=1 }
+    !skip { print }
+    index($0, e) { skip=0 }
+  ' "$MENU_EXT" > "$MENU_EXT.tmp" && mv "$MENU_EXT.tmp" "$MENU_EXT"
+}
+
+STOCK_MENU="/usr/share/omarchy/default/omarchy/omarchy-menu.jsonc"
+
+# Print the stock row for menu id $1 with its action replaced by $2.
+stock_row() {
+  local line
+  line="$(grep -m1 "\"$1\":" "$STOCK_MENU")" || { echo "No stock row $1" >&2; exit 1; }
+  STOCK_LINE="$line" NEW_ACTION="$2" python3 -I -c '
+import os
+line = os.environ["STOCK_LINE"].rstrip().rstrip(",")
+head = line[: line.index(",\"action\":")]
+action = os.environ["NEW_ACTION"].replace("\\", "\\\\").replace("\"", "\\\"")
+print(head + ",\"action\":\"" + action + "\"},")
+'
+}
+
+refresh_menu() {
+  omarchy menu refresh >/dev/null 2>&1 || true
+}
+
+case "${1:-}" in
+  on)
+    mkdir -p "$(dirname "$MENU_EXT")"
+    [[ -s "$MENU_EXT" ]] || printf '{\n}\n' > "$MENU_EXT"
+    [[ -f "$BACKUP" ]] || cp "$MENU_EXT" "$BACKUP"
+    remove_block
+    # An override replaces the whole row, so copy each stock row (icon, label,
+    # aliases, description) and swap only its action.
+    BLOCK="$(stock_row style.theme "omarchy-shell shell summon io.github.beyonddreadful.omatrix '{\"mode\":\"themes\"}'")
+$(stock_row style.background "omarchy-shell shell summon io.github.beyonddreadful.omatrix '{\"mode\":\"backgrounds\"}'")"
+    if MENU_BLOCK="$START"$'\n'"$BLOCK"$'\n'"$END" awk '
+         /^}/ && !d { print ENVIRON["MENU_BLOCK"]; d=1 }
+         { print }
+         END { exit !d }
+       ' "$MENU_EXT" > "$MENU_EXT.tmp"; then
+      mv "$MENU_EXT.tmp" "$MENU_EXT"
+      refresh_menu
+      echo "Omatrix pickers on: Style > Theme and Style > Background open the dial."
+    else
+      rm -f "$MENU_EXT.tmp"
+      echo "Could not find the closing brace in $MENU_EXT; nothing changed." >&2
+      exit 1
+    fi
+    ;;
+  off)
+    if [[ -f "$BACKUP" ]] && ! grep -q "$START" "$MENU_EXT" 2>/dev/null; then
+      echo "Omatrix pickers already off."
+    else
+      remove_block
+      refresh_menu
+      echo "Omatrix pickers off: Style > Theme and Style > Background use the stock pickers."
+    fi
+    ;;
+  status)
+    if [[ -f "$MENU_EXT" ]] && grep -q "$START" "$MENU_EXT"; then
+      echo "on: menu uses the Omatrix dial pickers."
+    else
+      echo "off: menu uses the stock pickers."
+    fi
+    ;;
+  *)
+    echo "Usage: omatrix-pickers on|off|status" >&2
+    exit 1
+    ;;
+esac
